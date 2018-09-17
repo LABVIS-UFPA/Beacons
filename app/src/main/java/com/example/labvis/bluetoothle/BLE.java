@@ -29,7 +29,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class BLE extends AppCompatActivity {
-    private static final long DELAY = (100);
+    private static final long DELAY = (10);
     private static final long SCAN_PERIODO = (60000);
     private BluetoothLeScanner mLEScanner;
     private ScanSettings settings;
@@ -39,29 +39,30 @@ public class BLE extends AppCompatActivity {
     private int REQUEST_ENABLE_BT = 1;
     private boolean mScanning;
     private Handler mHandler;
-    private List<Ponto> listaPontos = new ArrayList<Ponto>();
+    private List<Ponto> listaDePontos = new ArrayList<>();
     criarListaTXT criartxt = new criarListaTXT();
     private double ponto[] = new double[2];
     private TextView textView;
     private DrawView drawView;
     private ImageView imageView;
-    private int tam = 360;
-    private int altura = 360;
-    private int largura = 360;
+    private int tam = 380;
+    private int altura = 350;
+    private int largura = 380;
 
-    Ponto ponto1 = new Ponto("DD:81:9F:77:39:74", 0, largura);//jaalee
-    Ponto ponto2 = new Ponto("FD:72:A2:07:64:29", 0, 0);//wh1
-    Ponto ponto3 = new Ponto("C6:3C:24:FD:11:58", altura, 0);//gr2
+    Ponto ponto1 = new Ponto("Jaalee","DD:81:9F:77:39:74", 0, largura);
+    Ponto ponto2 = new Ponto("WH1","FD:72:A2:07:64:29", 0, 0);
+    Ponto ponto3 = new Ponto("GR2","C6:3C:24:FD:11:58", altura, 0);
+    //filtroMAC4 = "E6:DD:87:A7:8B:DB"; --> BK2
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ble);
-        imageView = (ImageView) findViewById(R.id.imageview);
+        imageView = findViewById(R.id.imageview);
 
-        listaPontos.add(ponto1);
-        listaPontos.add(ponto2);
-        listaPontos.add(ponto3);
+        listaDePontos.add(ponto1);
+        listaDePontos.add(ponto2);
+        listaDePontos.add(ponto3);
 
         mHandler = new Handler();
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
@@ -72,12 +73,12 @@ public class BLE extends AppCompatActivity {
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
 
-        ListView listView = (ListView)findViewById(R.id.listview2);
+        ListView listView = findViewById(R.id.listview2);
         arrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         listView.setAdapter(arrayAdapter);
         ((BaseAdapter) listView.getAdapter()).notifyDataSetChanged();
 
-        textView = (TextView) findViewById(R.id.textView1);
+        textView = findViewById(R.id.textView1);
         drawView = new DrawView(imageView, tam, altura, largura);
     }
 
@@ -175,35 +176,33 @@ public class BLE extends AppCompatActivity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    //if(device.getName() != null) {
-                    if(device.getAddress().equals(ponto1.getMAC()) ||
-                            device.getAddress().equals(ponto2.getMAC()) ||
-                            device.getAddress().equals(ponto3.getMAC())){
-                        txpower = (-70 + rssi)/2;
-                        distancia = L.calcularDistancia(txpower,rssi);
+                    /* A cada ciclo do for, é selecionado um ponto p da listaDePontos
+                    * */
+                    for(Ponto p : listaDePontos) {
+                        if (device.getAddress().equals(p.getMAC())) {
+                            txpower = (-69 + rssi) / 2;
+                            //txpower = -71;
+                            p.setRssi(rssi);
+                            distancia = L.calcularDistancia(txpower, p.getRssi());
+                            p.setdist(distancia);
 
-                        /* Adiciona os dados dos dispositivos descobertos no arrayAdapter,
-                         * que será exibido na no listView.
-                         */
-                        arrayAdapter.add("\nDevice: " + device.getName() + "\nMAC: " + device.getAddress() +
-                                "\nrssi: " + rssi + " dBm" + "\nDistância: " + distancia+" m \n");
-                        arrayAdapter.notifyDataSetChanged();
+                            /* Adiciona os dados dos dispositivos descobertos no arrayAdapter,
+                             * que será exibido na no listView.
+                             */
+                            arrayAdapter.add("\nDevice: " + p.getNome() + "\nMAC: " + device.getAddress() +
+                                    "\nrssi: " + rssi + " dBm" + "\nDistância: " + p.getdist() + " m \n");
+                            arrayAdapter.notifyDataSetChanged();
 
-                        for(int i = 0; i < listaPontos.size(); i++) {
-                            if (listaPontos.get(i).getMAC().equals(device.getAddress())) {
-                                listaPontos.get(i).setdist(distancia);
+                            /* A condição para que o método decobrirCoodenadas possa ser usado, é que
+                             * os valores de distância de cada um dos pontos sejam diferentes de zero.
+                             */
+                            if ((ponto1.getdist() != 0 && ponto2.getdist() != 0 && ponto3.getdist() != 0)) {
+                                ponto = L.descobrirCoordenadas(ponto1, ponto2, ponto3);
+                                //ponto = L.coordenadasLinha(ponto2, ponto3);
+                                drawView.drawSomething(imageView, (int) (ponto[0] * 100), (int) (ponto[1] * 100),
+                                        (int)(ponto1.getdist()*100), (int)(ponto2.getdist()*100), (int)(ponto3.getdist()*100));
+                                textView.setText("X = " + L.RCD(ponto[0]) + " m    Y = " + L.RCD(ponto[1]) + " m");
                             }
-                        }
-
-                        /* A condição para que o método decobrirCoodenadas possa ser usado, é que
-                         * os valores de distância de cada um dos pontos sejam diferentes de zero.
-                         */
-                        //if(( ponto2.getdist()!= 0 && ponto3.getdist() != 0)){
-                        if((ponto1.getdist()!= 0 && ponto2.getdist()!= 0 && ponto3.getdist() != 0)){
-                            ponto = L.descobrirCoordenadas(ponto1,ponto2,ponto3);
-                            //ponto = L.coordenadasLinha(ponto2, ponto3);
-                            drawView.drawSomething(imageView, (int)(ponto[0]*100), (int)(ponto[1]*100));
-                            textView.setText("X = "+L.RCD(ponto[0])+" m    Y = "+L.RCD(ponto[1])+" m");
                         }
                     }
                 }

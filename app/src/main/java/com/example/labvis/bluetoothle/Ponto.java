@@ -6,39 +6,38 @@ package com.example.labvis.bluetoothle;
  */
 public class Ponto {
     private String MAC;
+    private String nome;
     private double x;
     private double y;
     private double dist;
+    private double rssi;
 
-    public Ponto(String M, double X, double Y){
+    public Ponto(String N, String M, double X, double Y){
+        this.nome = N;
         this.MAC = M;
         this.x = X;
         this.y = Y;
+        this.rssi = 0;
     }
+
+    public String getNome() {
+        return nome;
+    }
+
 
     public String getMAC() {
         return MAC;
-    }
-
-    public void setMAC(String MAC) {
-        this.MAC = MAC;
     }
 
     public double getX() {
         return x;
     }
 
-    public void setX(double x) {
-        this.x = x;
-    }
 
     public double getY() {
         return y;
     }
 
-    public void setY(double y) {
-        this.y = y;
-    }
 
     public double  getdist(){
         return dist;
@@ -48,5 +47,17 @@ public class Ponto {
         this.dist = D;
     }
 
-    //filtroMAC4 = "E6:DD:87:A7:8B:DB"; //BK2
+    public double getRssi() {
+        return rssi;
+    }
+
+    /*
+    * Simple Low-Pass Filter
+    * */
+    public void setRssi(double RSSI) {
+        if(this.rssi != 0){
+            int smoothing = 53; //53
+            this.rssi = this.rssi + (RSSI - this.rssi) / smoothing;
+        }else  this.rssi = RSSI;
+    }
 }
